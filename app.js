@@ -142,12 +142,116 @@
     image.src = "assets/flags/" + code + ".svg";
   }
 
+  var Elections = window.ElectionResults;
+  var racePanel = document.getElementById("race-results");
+  var raceStatus = document.getElementById("race-status");
+  var raceCards = document.getElementById("race-cards");
+  var partyContext = document.getElementById("party-context");
+  var refreshResults = document.getElementById("refresh-results");
+  var selectedState = null, selectedOffice = "all";
+  var resultsFeed = null, governorFeed = null, resultsError = "", governorError = "";
+  var resultsLoading = null, governorsLoading = null;
+  var parties = { DEM: "Democratic", REP: "Republican", IND: "Independent", OTHER: "Other party" };
+  var staleMinutes = Math.max(1, Number(CFG.RESULTS_STALE_MINUTES) || 15);
+  var governorDays = Math.max(1, Number(CFG.GOVERNORS_MAX_AGE_DAYS) || 30);
+
+  function publicURL(value) {
+    var url = new URL(value, document.baseURI);
+    if (url.username || url.password || (url.protocol !== "https:" && !(url.origin === location.origin && url.protocol === "http:"))) throw Error("A public HTTPS feed URL is required.");
+    return url.href;
+  }
+  function sourceLink(parent, label, url) {
+    var link = el("a", null, label);
+    link.href = url; link.target = "_blank"; link.rel = "noopener noreferrer";
+    parent.appendChild(link);
+  }
+  function renderRaces() {
+    if (!selectedState) return;
+    racePanel.hidden = false;
+    document.getElementById("race-heading").textContent = selectedState.state + " · " + (selectedOffice === "all" ? "Senate & governor" : selectedOffice === "senate" ? "U.S. Senate" : "Governor");
+    var governor = governorFeed && governorFeed.governors.find(function (g) { return g.state === selectedState.stateId; });
+    var theme = Elections.governorTheme(governor, Date.now(), governorDays);
+    document.documentElement.dataset.political = theme;
+    partyContext.replaceChildren();
+    if (selectedState.stateId === "DC") {
+      partyContext.textContent = "D.C. has no governor. Theme: neutral.";
+    } else if (theme === "neutral") {
+      partyContext.textContent = "Theme: neutral · Sitting governor’s party is " + (governor ? "awaiting re-verification." : "not verified.") + (governorError ? " Governor directory is unavailable." : "");
+    } else {
+      partyContext.appendChild(el("span", "party-dot", ""));
+      partyContext.appendChild(document.createTextNode("Theme: " + parties[governor.party] + " · Sitting governor " + governor.name + ". Verified " + new Date(governor.verified_at).toLocaleString() + ". "));
+      sourceLink(partyContext, governor.source_name, governor.source_url);
+      if (governorError) partyContext.appendChild(document.createTextNode(" Directory refresh failed; showing the last verified record."));
+    }
+    var races = resultsFeed ? resultsFeed.races.filter(function (r) { return r.state === selectedState.stateId && (selectedOffice === "all" || r.office === selectedOffice); }) : [];
+    raceCards.replaceChildren();
+    if (!CFG.RESULTS_URL) {
+      raceStatus.textContent = "Live vote totals are not connected. The AP link below opens news coverage; it is not a data feed.";
+    } else if (resultsError) {
+      raceStatus.textContent = "Results update failed. " + (resultsFeed ? "Showing the last received snapshot; check its timestamp." : "No verified results are available.");
+    } else if (!resultsFeed) {
+      raceStatus.textContent = "Loading election results…";
+    } else {
+      raceStatus.textContent = "Source: " + resultsFeed.source.name + " · Election: " + resultsFeed.election_date + ". Refreshes every " + Math.max(30, Number(CFG.RESULTS_REFRESH_SECONDS) || 60) + " seconds while this tab is visible. Vote leads are not race calls.";
+    }
+    if (resultsFeed) sourceLink(raceCards, "Results source: " + resultsFeed.source.name, resultsFeed.source.url);
+    if (!races.length && resultsFeed) raceCards.appendChild(el("p", "status", "No matching results were supplied for this state. This does not establish whether a race is scheduled."));
+    races.forEach(function (r) {
+      var card = el("article", "race-card");
+      card.appendChild(el("h3", null, (r.office === "senate" ? "U.S. Senate" : "Governor") + (r.label ? " · " + r.label : "")));
+      var stale = Elections.stale(r, Date.now(), staleMinutes);
+      var label = { not_started: "No votes reported", reporting: "Counting · Uncalled", projected: "Projected winner (source call)", certified: "Certified result (source designation)" }[r.status];
+      card.appendChild(el("p", "race-meta", label + (stale ? " · STALE UPDATE" : "") + " · Updated " + new Date(r.updated_at).toLocaleString()));
+      card.appendChild(el("p", "status", r.reporting_percent == null ? "Reporting percentage unavailable" : r.reporting_percent + "% reporting (source estimate)"));
+      var total = r.candidates.reduce(function (sum, c) { return sum + c.votes; }, 0);
+      var leading = Elections.leader(r);
+      r.candidates.slice().sort(function (a, b) { return b.votes - a.votes; }).forEach(function (c) {
+        var row = el("div", "candidate");
+        row.appendChild(el("span", null, c.name + " · " + parties[c.party] + (c.winner ? " · " + (r.status === "certified" ? "Certified winner" : "Projected winner") : leading && leading.id === c.id ? " · Leading" : "")));
+        row.appendChild(el("strong", null, c.votes.toLocaleString() + " votes · " + (total ? (100 * c.votes / total).toFixed(1) : "0.0") + "%"));
+        card.appendChild(row);
+      });
+      raceCards.appendChild(card);
+    });
+    sourceLink(raceCards, "Read AP election coverage ↗", CFG.RESULTS_NEWS_URL);
+    refreshResults.disabled = !!resultsLoading || !!governorsLoading;
+  }
+  function loadGovernors() {
+    if (governorsLoading) return governorsLoading;
+    governorsLoading = Promise.resolve().then(function () { return fetchText(publicURL(CFG.GOVERNORS_URL)); }).then(function (text) {
+      governorFeed = Elections.validateGovernors(JSON.parse(text)); governorError = "";
+    }).catch(function () { governorError = "unavailable"; }).finally(function () { governorsLoading = null; renderRaces(); });
+    return governorsLoading;
+  }
+  function loadResults() {
+    if (resultsLoading) return resultsLoading;
+    if (!CFG.RESULTS_URL) { renderRaces(); return Promise.resolve(); }
+    resultsLoading = Promise.resolve().then(function () { return fetchText(publicURL(CFG.RESULTS_URL)); }).then(function (text) {
+      resultsFeed = Elections.validate(JSON.parse(text), CFG.RESULTS_ELECTION_DATE); resultsError = "";
+    }).catch(function () { resultsError = "unavailable"; }).finally(function () { resultsLoading = null; renderRaces(); });
+    renderRaces();
+    return resultsLoading;
+  }
+  function selectResults(blocks, office) {
+    selectedState = blocks[blocks.length - 1]; selectedOffice = office || "all";
+    renderRaces();
+    return Promise.all([loadGovernors(), loadResults()]);
+  }
+  refreshResults.addEventListener("click", function () { Promise.all([loadGovernors(), loadResults()]); });
+  setInterval(function () {
+    if (!document.hidden && selectedState) Promise.all([loadGovernors(), loadResults()]);
+  }, Math.max(30, Number(CFG.RESULTS_REFRESH_SECONDS) || 60) * 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && selectedState) Promise.all([loadGovernors(), loadResults()]);
+  });
+
   function reply(result) {
     var wrap = el("div", "msg bot");
     if (result.type !== "answer") {
       wrap.appendChild(el("p", null, result.intro));
     } else {
       updateFlag(result.blocks);
+      selectResults(result.blocks, "all");
       if (result.usedMemory) wrap.appendChild(el("p", null, "Still talking about " + result.blocks[0].state + ":"));
       result.blocks.forEach(function (b) { wrap.appendChild(stateCard(b)); });
     }
@@ -163,6 +267,18 @@
       if (!index) {
         reply({ type: "error", intro: "I couldn't load the voting data. Please try your question again shortly." });
         return;
+      }
+      if (Elections.intent(q)) {
+        var states = Bot.findStates(q, index).slice(0, 3);
+        if (!states.length && memory.lastState) states = [memory.lastState];
+        if (!states.length) { reply({ type: "need_state", intro: "Which state’s Senate or governor results would you like?" }); return; }
+        memory.lastState = states[states.length - 1];
+        var blocks = states.map(function (id) { return { stateId: id, state: index.byId[id].state_name }; });
+        updateFlag(blocks);
+        reply({ type: "results", intro: "Showing " + blocks[blocks.length - 1].state + " results in the election panel. Colors reflect the sitting governor’s party, when verified—not race leads or a projected successor." });
+        return selectResults(blocks, Elections.office(q)).then(function () {
+          racePanel.scrollIntoView({ block: "nearest", behavior: "auto" });
+        });
       }
       reply(Bot.answer(q, index, memory));
     });
@@ -180,6 +296,6 @@
   form.addEventListener("submit", function (e) { e.preventDefault(); ask(input.value); });
 
   loadData().then(function () {
-    reply({ type: "help", intro: "Hi! Ask me how, when or where to vote by mail in any state, plus D.C. I answer only from our newsroom's fact-checked spreadsheet, and every answer links to the state's official site." });
+    reply({ type: "help", intro: "Hi! Ask me how, when or where to vote by mail in any state, plus D.C. I answer only from our newsroom's fact-checked spreadsheet, and ballot answers link to the state's official site. You can also ask for Senate and governor race results." });
   });
 })();

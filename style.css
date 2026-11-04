@@ -77,3 +77,28 @@ footer p { margin: 0 0 8px; }
   .msg { animation: rise .2s ease-out; }
   @keyframes rise { from { transform: translateY(5px); opacity: .5; } }
 }
+
+/* Party accents describe the sitting governor only; flags retain their colors. */
+:root[data-political="democratic"] { --accent: #174ca4; --accent-ink: #fff; --you: #174ca4; --stamp: #174ca4; }
+:root[data-political="republican"] { --accent: #a32328; --accent-ink: #fff; --you: #a32328; --stamp: #a32328; }
+:root[data-political="independent"] { --accent: #62418c; --accent-ink: #fff; --you: #62418c; --stamp: #62418c; }
+:root[data-political="other"] { --accent: #35624a; --accent-ink: #fff; --you: #35624a; --stamp: #35624a; }
+.wrap { border-top: 4px solid var(--accent); }
+.brand-mark, form.ask button, button.run { background: var(--accent); color: var(--accent-ink); }
+.chips button:hover { background: var(--accent); border-color: var(--accent); }
+.state-card a, .race-results a { color: var(--accent); }
+.race-results[hidden] { display: none; }
+.race-results { border: 1px solid var(--rule); border-top: 3px solid var(--accent); background: #fff; border-radius: 6px; padding: 18px; }
+.race-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.race-heading h2 { font-size: 18px; margin: 0; }
+.race-heading button { background: #fff; border: 1px solid #555; border-radius: 4px; font: inherit; font-size: 12px; padding: 7px 10px; cursor: pointer; }
+.race-heading button:disabled { opacity: .6; cursor: wait; }
+.party-context { padding: 10px; background: #f0f0ef; font-size: 12px; line-height: 1.6; }
+.party-dot { display: inline-block; width: 9px; height: 9px; background: var(--accent); border-radius: 50%; margin-right: 6px; }
+#race-cards { display: grid; gap: 16px; overflow-wrap: anywhere; }
+#race-cards > a { font-size: 12px; }
+.race-card { border-top: 1px solid var(--rule); padding-top: 14px; }
+.race-card h3 { margin: 0 0 8px; font-size: 16px; }
+.race-meta { font-size: 12px; font-weight: 600; }
+.candidate { display: grid; gap: 4px; padding: 10px 0; border-top: 1px solid #eee; font-size: 13px; }
+.candidate strong { font: 600 12px/1.5 var(--font-mono); }

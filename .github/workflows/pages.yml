@@ -25,13 +25,13 @@ jobs:
         with:
           node-version: 24
       - run: node scripts/check.js data/voting.csv
-      - run: node --test tests/regressions.cjs
+      - run: node --test tests/regressions.cjs tests/results.cjs
       - name: Prepare static site
         run: |
           mkdir -p /tmp/site/data /tmp/site/tests
-          cp index.html style.css config.js bot.js app.js tests.html /tmp/site/
+          cp index.html style.css config.js bot.js results.js app.js tests.html /tmp/site/
           cp tests/checks.js tests/test-cases.js /tmp/site/tests/
-          cp data/voting.csv /tmp/site/data/
+          cp data/voting.csv data/governors.json /tmp/site/data/
           cp -R assets /tmp/site/assets
           touch /tmp/site/.nojekyll
       - uses: actions/upload-pages-artifact@v3

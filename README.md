@@ -66,4 +66,12 @@ This guide describes the **Nov. 3, 2026 election**. The current CSV's dates requ
 
 ## Theme and flag backgrounds
 
-The interface uses a fixed black-and-white theme. After an answer, the page background shows that state's locally bundled flag; a dark overlay keeps the white chat panel readable. All 50 states and D.C. are included in `assets/flags/` and packaged by the Pages workflow. No image API or network access is needed. Follow-ups retain the state; comparisons show the last state in the answer, identified above the chat. An unavailable flag falls back to the plain dark background. Reduced-motion preferences disable decorative animation.
+The interface starts with a black-and-white theme; verified sitting-governor records can change its accents as described below. After an answer, the page background shows that state's locally bundled flag; a dark overlay keeps the white chat panel readable. All 50 states and D.C. are included in `assets/flags/` and packaged by the Pages workflow. No image API or network access is needed. Follow-ups retain the state; comparisons show the last state in the answer, identified above the chat. An unavailable flag falls back to the plain dark background. Reduced-motion preferences disable decorative animation.
+
+## Election results and governor-party colors
+
+Ask “Who is leading the Senate race in Pennsylvania?” or “Governor results in Texas.” A separate panel displays results, timestamps, source links, reporting estimates and explicit call status when a live source is configured. An AP coverage link is available now; the AP news page is not a results API. `RESULTS_URL` is intentionally empty until an authorized public JSON adapter is connected.
+
+Site accents follow the **party of the sitting governor**, independently of election leads or projected successors: blue for Democratic, red for Republican, purple for Independent, green for another party. The panel names the party in text. The current governor directory is intentionally empty pending source verification, so all states stay neutral initially. Missing, stale and unverified records also stay neutral. D.C. stays neutral because it has no governor.
+
+See [the feed and governor-directory setup guide](docs/election-results.md) for contracts, source requirements, refresh behavior and validation. Do not put provider credentials in browser code. Run `node tests/results.cjs` for the election integration's unit checks.
