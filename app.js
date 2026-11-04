@@ -6,7 +6,8 @@
   "use strict";
   var CFG = window.BOT_CONFIG;
   var Bot = window.MailBot;
-  var index = null, loadedAt = 0, memory = {};
+  var index = null, loadedAt = 0, memory = {}, loading = null;
+  var queue = Promise.resolve();
 
   var log = document.getElementById("log");
   var form = document.getElementById("ask");
@@ -16,28 +17,33 @@
 
   /* ---- Loading the data: live Google Sheet first, backup copy second ---- */
   function fetchText(url) {
-    return fetch(url, { cache: "no-store" }).then(function (r) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 8000);
+    return fetch(url, { cache: "no-store", signal: controller.signal }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.text();
-    });
+    }).finally(function () { clearTimeout(timer); });
   }
 
   function useRows(rows, label, warn) {
-    if (!rows.length || !("state_id" in rows[0])) throw new Error("No state_id column");
+    var validation = window.MailBotChecks.checkData(rows);
+    if (validation.errors.length) throw new Error(validation.errors.join(" "));
     index = Bot.buildIndex(rows);
     loadedAt = Date.now();
     status.textContent = label + " · " + rows.length + " rows · loaded " +
       new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    status.className = "status" + (warn ? " warn" : "");
+    if (validation.warnings.length) status.textContent += " · " + validation.warnings.join(" ");
+    status.className = "status" + (warn || validation.warnings.length ? " warn" : "");
   }
 
   function loadData() {
+    if (loading) return loading;
     var live = CFG.SHEET_CSV_URL;
     var hasLive = CFG.USE_GOOGLE_SHEET !== false && live && /^https:\/\/docs\.google\.com\//.test(live);
     var first = hasLive
       ? fetchText(live).then(function (t) { useRows(Bot.parseCSV(t), "Reading your Google Sheet directly"); })
       : Promise.reject(new Error("No Google Sheet link in config.js"));
-    return first.catch(function (err) {
+    loading = first.catch(function (err) {
       console.warn("Google Sheet unavailable, using backup:", err.message);
       return fetchText(CFG.BACKUP_CSV).then(function (t) {
         useRows(Bot.parseCSV(t), hasLive ? "Reading the backup copy (your Google Sheet couldn't be reached)" : "Reading the tested backup copy in GitHub", hasLive);
@@ -45,7 +51,8 @@
     }).catch(function (err) {
       status.textContent = "Couldn't load the voting data. Refresh the page to try again. (" + err.message + ")";
       status.className = "status warn";
-    });
+    }).finally(function () { loading = null; });
+    return loading;
   }
 
   function freshData() {
@@ -63,7 +70,7 @@
 
   function add(node) {
     log.appendChild(node);
-    node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    node.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   function formatDate(iso) {
@@ -105,11 +112,42 @@
     return card;
   }
 
+  // Use the last state in a comparison, matching the state remembered for follow-ups.
+  var backdrop = document.getElementById("flag-backdrop");
+  var stateContext = document.getElementById("state-context");
+  var flagRequest = 0;
+  function updateFlag(blocks) {
+    if (!backdrop || !blocks.length) return;
+    var state = blocks[blocks.length - 1];
+    var code = String(state.stateId).toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code) || !index.byId[code]) return;
+    var request = ++flagRequest;
+    stateContext.textContent = blocks.length > 1
+      ? blocks.map(function (b) { return b.state; }).join(" / ") + " · " + state.state + " flag"
+      : state.state + " · " + code;
+    // Preload before switching, and ignore late loads from earlier questions.
+    var image = new Image();
+    image.onload = function () {
+      if (request !== flagRequest) return;
+      backdrop.style.backgroundImage = 'url("' + image.src + '")';
+      backdrop.dataset.state = code;
+      backdrop.classList.add("is-visible");
+    };
+    image.onerror = function () {
+      if (request !== flagRequest) return;
+      backdrop.style.backgroundImage = "none";
+      delete backdrop.dataset.state;
+      backdrop.classList.remove("is-visible");
+    };
+    image.src = "assets/flags/" + code + ".svg";
+  }
+
   function reply(result) {
     var wrap = el("div", "msg bot");
     if (result.type !== "answer") {
       wrap.appendChild(el("p", null, result.intro));
     } else {
+      updateFlag(result.blocks);
       if (result.usedMemory) wrap.appendChild(el("p", null, "Still talking about " + result.blocks[0].state + ":"));
       result.blocks.forEach(function (b) { wrap.appendChild(stateCard(b)); });
     }
@@ -121,8 +159,11 @@
     if (!q) return;
     add(el("div", "msg you", q));
     input.value = "";
-    freshData().then(function () {
-      if (!index) return;
+    queue = queue.then(function () { return freshData(); }).then(function () {
+      if (!index) {
+        reply({ type: "error", intro: "I couldn't load the voting data. Please try your question again shortly." });
+        return;
+      }
       reply(Bot.answer(q, index, memory));
     });
   }

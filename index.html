@@ -10,12 +10,18 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="flag-backdrop" class="flag-backdrop" aria-hidden="true"></div>
   <main class="wrap">
     <header>
-      <p class="kicker"><span data-newsroom>Your Newsroom</span> · Voter guide</p>
-      <h1>Ask about voting by mail</h1>
+      <div class="masthead"><span class="brand-mark" aria-hidden="true">✳</span><span>THE MAIL BALLOT GUIDE</span><span class="edition">2026 EDITION</span></div>
+      <p class="kicker"><span data-newsroom>Mail Ballot Answers</span> · Voter guide</p>
+      <h1>Your state.<br>Your ballot. Your questions.</h1>
       <p>Deadlines, ballot requests, ID and witness rules for the <span data-election>2026 general election</span>, for all 50 states and D.C.</p>
     </header>
+
+    <p class="status warn">This guide covers the Nov. 3, 2026 election. These dates do not apply to later elections. Confirm current rules with your official election office.</p>
+
+    <div class="conversation-heading"><span>ASK THE GUIDE</span><span id="state-context" role="status">50 states + D.C.</span></div>
 
     <div id="chips" class="chips" aria-label="Example questions"></div>
 
@@ -24,7 +30,7 @@
     <form id="ask" class="ask" autocomplete="off">
       <label for="q">Your question</label>
       <input id="q" name="q" type="text" placeholder="e.g. When is my ballot due in Ohio?" required>
-      <button type="submit">Ask</button>
+      <button type="submit">Ask <span aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13 13 3M3 3h10v10" stroke="currentColor" stroke-width="1.5"/></svg></span></button>
     </form>
 
     <footer>
@@ -35,6 +41,7 @@
 
   <script src="config.js"></script>
   <script src="bot.js"></script>
+  <script src="tests/checks.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

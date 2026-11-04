@@ -29,8 +29,8 @@ Google Sheet  ──(Publish to web, CSV)──▶  index.html on GitHub Pages  
 
 1. **Sheet**: Import `data/voting.csv` into a new Google Sheet (File > Import > Upload). Keep the header row exactly as is.
 2. **Publish**: File > Share > Publish to web > choose the tab > *Comma-separated values (.csv)* > Publish. Copy the link (it ends in `output=csv`).
-3. **Config**: In this repo, edit `config.js` and paste the link into `SHEET_CSV_URL`. Commit.
-4. **Pages**: Settings > Pages > Source: *Deploy from a branch* > `main` / `(root)` > Save. Your bot appears at `https://YOUR-USERNAME.github.io/REPO-NAME/` in a minute or two.
+3. **Config**: In this repo, edit `config.js` and paste the link into `SHEET_CSV_URL`. Commit. Keep `USE_GOOGLE_SHEET: false` to serve the tested local copy, or set it to `true` to enable direct live-sheet loading.
+4. **Pages**: Settings > Pages > Source: *GitHub Actions* > Save. Your bot appears at `https://YOUR-USERNAME.github.io/REPO-NAME/` in a minute or two.
 5. **Action**: Settings > Secrets and variables > Actions > *Variables* tab > New repository variable named `SHEET_CSV_URL` with the same link. Then Actions tab > *Sync sheet and test bot* > Run workflow.
 
 ## Updating a fact
@@ -47,3 +47,23 @@ Google Sheet  ──(Publish to web, CSV)──▶  index.html on GitHub Pages  
 - `last_updated` uses the format `2026-10-06`.
 - Optional: add a `return_where` column and the bot will use it to answer "where" questions.
 - Never put anything in the sheet you wouldn't publish. A published sheet is public.
+
+## Local development and publishing
+
+No npm install, API keys, or build tools are needed. Use Node 24 and Python 3:
+
+```sh
+node scripts/check.js data/voting.csv
+node --test tests/regressions.cjs
+python3 -m http.server 8000 --bind 127.0.0.1
+```
+
+Open the local site and `tests.html` in your browser. The default uses the tested CSV in this repository so a Google outage cannot delay initial loading. Live mode times out after eight seconds and falls back to the validated backup.
+
+In repository Settings > Pages, choose **GitHub Actions**. Push these changes to `main`, then check **Test and deploy website** in Actions. It tests the data and code and uploads only the website files. The separate **Sync sheet and test bot** workflow validates the published sheet before committing an updated backup every 30 minutes. Its successful completion triggers deployment so automated CSV commits also reach Pages. No npm publishing or Jekyll build is needed.
+
+This guide describes the **Nov. 3, 2026 election**. The current CSV's dates require editorial re-verification before presenting it as current voting guidance. Do not change `last_updated` without checking the official sources. For a later election, update and verify the spreadsheet, election labels, and question cases together.
+
+## Theme and flag backgrounds
+
+The interface uses a fixed black-and-white theme. After an answer, the page background shows that state's locally bundled flag; a dark overlay keeps the white chat panel readable. All 50 states and D.C. are included in `assets/flags/` and packaged by the Pages workflow. No image API or network access is needed. Follow-ups retain the state; comparisons show the last state in the answer, identified above the chat. An unavailable flag falls back to the plain dark background. Reduced-motion preferences disable decorative animation.

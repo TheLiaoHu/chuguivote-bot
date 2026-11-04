@@ -75,7 +75,7 @@
 
     function run() {
       var live = CFG.SHEET_CSV_URL;
-      var p = /^https:\/\/docs\.google\.com\//.test(live)
+      var p = CFG.USE_GOOGLE_SHEET !== false && /^https:\/\/docs\.google\.com\//.test(live)
         ? get(live).then(function (t) { render(MailBot.parseCSV(t), "Tested against your Google Sheet"); })
         : Promise.reject(new Error("no live link in config.js"));
       p.catch(function (e) {

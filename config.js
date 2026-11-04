@@ -18,13 +18,13 @@ window.BOT_CONFIG = {
   // false = the bot reads only the tested backup copy in GitHub, which
   //         updates after the automatic tests pass (safer: a typo in the
   //         sheet never reaches readers)
-  USE_GOOGLE_SHEET: true,
+  USE_GOOGLE_SHEET: false,
 
   // Re-download the sheet if the page has been open longer than this
   REFRESH_MINUTES: 5,
 
   // Shown in the page header and the bot's first message
-  NEWSROOM: "Your Newsroom",
+  NEWSROOM: "Mail Ballot Answers",
   ELECTION: "Nov. 3, 2026, general election",
 
   // Buttons readers can tap to get started

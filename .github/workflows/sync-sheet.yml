@@ -1,8 +1,15 @@
+# Copies the Google Sheet into this repo as a backup, then tests it.
+#
+# Setup (one time): Settings > Secrets and variables > Actions > Variables tab >
+#   New repository variable.  Name: SHEET_CSV_URL   Value: your published CSV link
+#
+# Runs every 30 minutes, whenever you push code, and whenever you click
+# Actions > "Sync sheet and test bot" > Run workflow.
 name: Sync sheet and test bot
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # about every 5 minutes (GitHub may run it a few minutes late)
+    - cron: "*/30 * * * *"   # about every 30 minutes (GitHub may run it a few minutes late)
   push:
     branches: [main]
   workflow_dispatch:
@@ -18,16 +25,18 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Download the published Google Sheet
         if: ${{ vars.SHEET_CSV_URL != '' }}
+        env:
+          SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
         run: |
-          curl -fsSL "${{ vars.SHEET_CSV_URL }}" -o /tmp/sheet.csv
+          curl --max-time 60 --retry 2 -fsSL "$SHEET_CSV_URL" -o /tmp/sheet.csv
           echo "Downloaded $(wc -l < /tmp/sheet.csv) lines"
 
       - name: Test the new copy before saving it

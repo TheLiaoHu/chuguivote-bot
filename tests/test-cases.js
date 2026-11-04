@@ -10,6 +10,9 @@
  */
 (function (root) {
   var CASES = [
+    { q: "How do I request a ballot in Texas?", states: ["TX"], columns: ["request_process", "request_deadline"] },
+    { q: "TX", states: ["TX"], columns: ["request_process"] },
+    { q: "or", states: ["OR"], columns: ["request_process"] },
     // The basics: when, how, where
     { q: "When is my mail ballot due in Ohio?", states: ["OH"], columns: ["mail_in_deadline"] },
     { q: "What's the deadline to request an absentee ballot in Pennsylvania?", states: ["PA"], columns: ["request_deadline"] },

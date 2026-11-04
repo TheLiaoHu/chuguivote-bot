@@ -40,10 +40,15 @@
     }
     if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
 
+    if (inQuotes) throw new Error("CSV has an unterminated quoted cell.");
     var header = (rows.shift() || []).map(function (h) { return h.trim(); });
+    if (!header.length || header.some(function (h) { return !h; }) || new Set(header).size !== header.length) {
+      throw new Error("CSV headers must be nonempty and unique.");
+    }
     return rows
       .filter(function (r) { return r.some(function (c) { return c.trim() !== ""; }); })
       .map(function (r) {
+        if (r.length !== header.length) throw new Error("CSV row has the wrong number of columns.");
         var obj = {};
         header.forEach(function (h, idx) { obj[h] = (r[idx] || "").trim(); });
         return obj;
@@ -99,6 +104,8 @@
       }
     });
     // two-letter codes, capitals only, and only if the whole message isn't shouted
+    var onlyCode = question.trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(onlyCode) && index.byId[onlyCode]) return [onlyCode];
     var shouting = question === question.toUpperCase();
     if (!shouting) {
       var codeRe = /\b([A-Z]{2})\b/g, m2;
@@ -175,7 +182,7 @@
    * ------------------------------------------------------------------- */
   var LABELS = {
     return: "Ballot return deadline",
-    request: "Deadline to request a ballot",
+    request: "How and when to request a ballot",
     eligibility: "Who can vote by mail",
     id: "ID, witness and signature rules",
     where: "Where to return it",
@@ -191,7 +198,7 @@
       case "return":
         return field(row, "mail_in_deadline") || missing;
       case "request":
-        return field(row, "request_deadline") || missing;
+        return [field(row, "request_process"), field(row, "request_deadline")].filter(Boolean).join(" ") || missing;
       case "eligibility":
         return field(row, "request_process") || missing;
       case "id":

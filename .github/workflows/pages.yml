@@ -1,0 +1,53 @@
+name: Test and deploy website
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Sync sheet and test bot"]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/check.js data/voting.csv
+      - run: node --test tests/regressions.cjs
+      - name: Prepare static site
+        run: |
+          mkdir -p /tmp/site/data /tmp/site/tests
+          cp index.html style.css config.js bot.js app.js tests.html /tmp/site/
+          cp tests/checks.js tests/test-cases.js /tmp/site/tests/
+          cp data/voting.csv /tmp/site/data/
+          cp -R assets /tmp/site/assets
+          touch /tmp/site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: /tmp/site
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
