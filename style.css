@@ -86,3 +86,5 @@ footer p { margin: 0 0 10px; }
   form.ask input { padding: 10px 6px; }
 }
 @media (prefers-reduced-motion: no-preference) { .flag-backdrop { transition: opacity .3s ease; } }
+
+header .byline { margin: 0 0 10px; color: var(--muted); font-family: "Apple Chancery", "URW Chancery L", "Brush Script MT", cursive; font-size: 16px; font-style: italic; font-weight: 400; line-height: 1.5; }
