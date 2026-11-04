@@ -75,3 +75,7 @@ Ask “Who is leading the Senate race in Pennsylvania?” or “Governor results
 Site accents follow the **party of the sitting governor**, independently of election leads or projected successors: blue for Democratic, red for Republican, purple for Independent, green for another party. The panel names the party in text. The current governor directory is intentionally empty pending source verification, so all states stay neutral initially. Missing, stale and unverified records also stay neutral. D.C. stays neutral because it has no governor.
 
 See [the feed and governor-directory setup guide](docs/election-results.md) for contracts, source requirements, refresh behavior and validation. Do not put provider credentials in browser code. Run `node tests/results.cjs` for the election integration's unit checks.
+
+## Minimal monochrome design
+
+The current design uses a white canvas, system typography, flat answer sections and grayscale state-flag backgrounds. Party affiliations remain available as text; they no longer recolor the interface. This replaces the earlier colored-accent design. Desktop suggestions use two columns and mobile suggestions use a single column. Verification dates remain in each answer footer.

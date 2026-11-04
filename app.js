@@ -174,12 +174,12 @@
     document.documentElement.dataset.political = theme;
     partyContext.replaceChildren();
     if (selectedState.stateId === "DC") {
-      partyContext.textContent = "D.C. has no governor. Theme: neutral.";
+      partyContext.textContent = "D.C. has no governor.";
     } else if (theme === "neutral") {
-      partyContext.textContent = "Theme: neutral · Sitting governor’s party is " + (governor ? "awaiting re-verification." : "not verified.") + (governorError ? " Governor directory is unavailable." : "");
+      partyContext.textContent = "Sitting governor’s party is " + (governor ? "awaiting re-verification." : "not verified.") + (governorError ? " Governor directory is unavailable." : "");
     } else {
       partyContext.appendChild(el("span", "party-dot", ""));
-      partyContext.appendChild(document.createTextNode("Theme: " + parties[governor.party] + " · Sitting governor " + governor.name + ". Verified " + new Date(governor.verified_at).toLocaleString() + ". "));
+      partyContext.appendChild(document.createTextNode("Governor’s party: " + parties[governor.party] + " · Sitting governor " + governor.name + ". Verified " + new Date(governor.verified_at).toLocaleString() + ". "));
       sourceLink(partyContext, governor.source_name, governor.source_url);
       if (governorError) partyContext.appendChild(document.createTextNode(" Directory refresh failed; showing the last verified record."));
     }
@@ -213,7 +213,7 @@
       });
       raceCards.appendChild(card);
     });
-    sourceLink(raceCards, "Read AP election coverage ↗", CFG.RESULTS_NEWS_URL);
+    sourceLink(raceCards, "Read AP election coverage", CFG.RESULTS_NEWS_URL);
     refreshResults.disabled = !!resultsLoading || !!governorsLoading;
   }
   function loadGovernors() {
@@ -275,7 +275,7 @@
         memory.lastState = states[states.length - 1];
         var blocks = states.map(function (id) { return { stateId: id, state: index.byId[id].state_name }; });
         updateFlag(blocks);
-        reply({ type: "results", intro: "Showing " + blocks[blocks.length - 1].state + " results in the election panel. Colors reflect the sitting governor’s party, when verified—not race leads or a projected successor." });
+        reply({ type: "results", intro: "Showing " + blocks[blocks.length - 1].state + " results in the election panel. The sitting governor’s party is listed separately from race leads and projected successors." });
         return selectResults(blocks, Elections.office(q)).then(function () {
           racePanel.scrollIntoView({ block: "nearest", behavior: "auto" });
         });
