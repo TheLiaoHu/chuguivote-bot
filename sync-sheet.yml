@@ -1,0 +1,60 @@
+# Copies the Google Sheet into this repo as a backup, then tests it.
+#
+# Setup (one time): Settings > Secrets and variables > Actions > Variables tab >
+#   New repository variable.  Name: SHEET_CSV_URL   Value: your published CSV link
+#
+# Runs every 5 minutes, whenever you push code, and whenever you click
+# Actions > "Sync sheet and test bot" > Run workflow.
+name: Sync sheet and test bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # about every 5 minutes (GitHub may run it a few minutes late)
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-sheet
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Download the published Google Sheet
+        if: ${{ vars.SHEET_CSV_URL != '' }}
+        run: |
+          curl -fsSL "${{ vars.SHEET_CSV_URL }}" -o /tmp/sheet.csv
+          echo "Downloaded $(wc -l < /tmp/sheet.csv) lines"
+
+      - name: Test the new copy before saving it
+        if: ${{ vars.SHEET_CSV_URL != '' }}
+        run: node scripts/check.js /tmp/sheet.csv
+
+      - name: Save the new copy if the sheet changed
+        if: ${{ vars.SHEET_CSV_URL != '' }}
+        run: |
+          cp /tmp/sheet.csv data/voting.csv
+          if git diff --quiet data/voting.csv; then
+            echo "No changes in the sheet."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/voting.csv
+            git commit -m "Update data from Google Sheet ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
+
+      - name: Test the saved copy (runs when no sheet link is set yet)
+        if: ${{ vars.SHEET_CSV_URL == '' }}
+        run: node scripts/check.js data/voting.csv

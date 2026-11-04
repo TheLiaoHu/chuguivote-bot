@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bot Test Report</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:wght@400;600;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .pill { font: 600 11px/1 var(--font-mono); letter-spacing: .06em; padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; }
+    .pass { color: #15803d; } .fail { color: var(--stamp); } .warnc { color: #b45309; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    td, th { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--rule); }
+    .scroll { overflow-x: auto; }
+    details pre { white-space: pre-wrap; font: 12px/1.5 var(--font-mono); background: var(--card); padding: 8px; border-radius: 6px; }
+    ul.plain { margin: 0; padding-left: 18px; }
+    button.run { font: 600 15px var(--font-body); padding: 10px 16px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); cursor: pointer; justify-self: start; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <p class="kicker">Newsroom tools · not for readers</p>
+      <h1>Bot test report</h1>
+      <p>Run this after every spreadsheet edit. It reloads your Google Sheet, checks every row, then asks the bot each question in <code>tests/test-cases.js</code>.</p>
+    </header>
+    <button class="run" id="run" type="button">Run tests again</button>
+    <p id="source" class="status">Loading…</p>
+    <section><h2>1. Is the spreadsheet complete?</h2><div id="data"></div></section>
+    <section><h2>2. Does the bot answer correctly?</h2><div id="qs" class="scroll"></div></section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="bot.js"></script>
+  <script src="tests/test-cases.js"></script>
+  <script src="tests/checks.js"></script>
+  <script>
+  (function () {
+    var CFG = window.BOT_CONFIG;
+    function get(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }); }
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+    function render(rows, label) {
+      document.getElementById("source").textContent = label + " · " + rows.length + " rows";
+      var index = MailBot.buildIndex(rows);
+
+      var d = MailBotChecks.checkData(rows);
+      var data = document.getElementById("data"); data.innerHTML = "";
+      var head = el("p");
+      head.appendChild(el("span", "pill " + (d.errors.length ? "fail" : "pass"), d.errors.length ? d.errors.length + " PROBLEMS" : "COMPLETE"));
+      data.appendChild(head);
+      var ul = el("ul", "plain");
+      d.errors.forEach(function (e) { ul.appendChild(el("li", "fail", e)); });
+      d.warnings.forEach(function (w) { ul.appendChild(el("li", "warnc", w)); });
+      data.appendChild(ul);
+
+      var results = MailBotChecks.checkQuestions(MailBot, index, MailBotTests);
+      var passed = results.filter(function (r) { return r.pass; }).length;
+      var qs = document.getElementById("qs"); qs.innerHTML = "";
+      qs.appendChild(el("p", null, passed + " of " + results.length + " questions passed."));
+      var t = el("table"); var hr = el("tr");
+      ["Result", "Question", "Details"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+      t.appendChild(hr);
+      results.forEach(function (r) {
+        var tr = el("tr");
+        var c1 = el("td"); c1.appendChild(el("span", "pill " + (r.pass ? "pass" : "fail"), r.pass ? "PASS" : "FAIL")); tr.appendChild(c1);
+        tr.appendChild(el("td", null, r.q));
+        var c3 = el("td");
+        r.problems.forEach(function (p) { c3.appendChild(el("div", "fail", p)); });
+        var det = el("details"); det.appendChild(el("summary", null, "See the answer")); det.appendChild(el("pre", null, r.text));
+        c3.appendChild(det); tr.appendChild(c3); t.appendChild(tr);
+      });
+      qs.appendChild(t);
+    }
+
+    function run() {
+      var live = CFG.SHEET_CSV_URL;
+      var p = /^https:\/\/docs\.google\.com\//.test(live)
+        ? get(live).then(function (t) { render(MailBot.parseCSV(t), "Tested against your Google Sheet"); })
+        : Promise.reject(new Error("no live link in config.js"));
+      p.catch(function (e) {
+        return get(CFG.BACKUP_CSV).then(function (t) {
+          render(MailBot.parseCSV(t), "Tested against the backup copy in GitHub (" + e.message + ")");
+        });
+      }).catch(function (e) { document.getElementById("source").textContent = "Could not load any data: " + e.message; });
+    }
+    document.getElementById("run").addEventListener("click", run);
+    run();
+  })();
+  </script>
+</body>
+</html>

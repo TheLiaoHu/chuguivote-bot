@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mail Ballot Answers</title>
+  <meta name="description" content="Ask when, where and how to vote by mail in your state.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:wght@400;600;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <p class="kicker"><span data-newsroom>Your Newsroom</span> · Voter guide</p>
+      <h1>Ask about voting by mail</h1>
+      <p>Deadlines, ballot requests, ID and witness rules for the <span data-election>2026 general election</span>, for all 50 states and D.C.</p>
+    </header>
+
+    <div id="chips" class="chips" aria-label="Example questions"></div>
+
+    <section id="log" class="log" aria-live="polite" aria-label="Conversation"></section>
+
+    <form id="ask" class="ask" autocomplete="off">
+      <label for="q">Your question</label>
+      <input id="q" name="q" type="text" placeholder="e.g. When is my ballot due in Ohio?" required>
+      <button type="submit">Ask</button>
+    </form>
+
+    <footer>
+      <p>Answers come from a spreadsheet our reporters check against each state's official election office. Rules can change quickly near an election, so confirm with your state or local election office before you vote.</p>
+      <p id="status" class="status">Loading voting data…</p>
+    </footer>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="bot.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
